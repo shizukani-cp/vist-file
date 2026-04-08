@@ -98,6 +98,9 @@ function M.do_action(action)
         os.rename(old_path, new_path)
     elseif action.kind == "delete" then
         local path = vim.fs.joinpath(cwd, action.data.name)
+        if vim.fn.isdirectory(path) == 1 then
+            vim.fn.delete(path, "rf")
+        end
         os.remove(path)
     elseif action.kind == "create" then
         local path = vim.fs.joinpath(cwd, action.data.name)
