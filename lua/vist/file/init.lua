@@ -38,7 +38,8 @@ function M.list()
         return
     end
     local files = vim.fn.readdir(cwd)
-    local items = {}
+    table.sort(files)
+    local items = { directory = {}, file = {}, all = {} }
     M.cache = {}
 
     for i, name in ipairs(files) do
@@ -46,16 +47,20 @@ function M.list()
         local icon, hl = devicons.get_icon(name, ext, { default = true })
         local full_path = vim.fs.joinpath(cwd, name)
         local display_name = name
-        if vim.fn.isdirectory(full_path) == 1 then
-            display_name = name .. "/"
-            icon = ""
-            hl = "Directory"
-        end
         local item = { id = i, display = display_name, icon = icon, icon_hl = hl }
-        table.insert(items, item)
+        if vim.fn.isdirectory(full_path) == 1 then
+            item.display = name .. "/"
+            item.icon = ""
+            item.icon_hl = "Directory"
+            table.insert(items.directory, item)
+        else
+            table.insert(items.file, item)
+        end
         M.cache[i] = name
     end
-    return items
+    vim.list_extend(items.all, items.directory)
+    vim.list_extend(items.all, items.file)
+    return items.all
 end
 
 function M.parse(state)
