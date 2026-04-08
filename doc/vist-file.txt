@@ -1,0 +1,58 @@
+*vist-file.txt* A file system adapter for vist.nvim   Last Change: 2026-04-08
+
+==============================================================================
+INTRODUCTION                                                *vist-file*
+
+vist-file is a file system adapter for vist.nvim.
+It provides a oil.nvim-like experience where you can manage files by editing
+the buffer directly.
+
+Dependencies:
+- nvim-web-devicons (for file icons)
+
+==============================================================================
+USAGE                                                  *vist-file-usage*
+
+To start the file explorer:
+
+>lua
+    local vist = require("vist.core")
+    local file_adapter = require("vist.adapters.file")
+
+    vist.open(file_adapter)
+<
+
+Keybindings:
+    <CR>        Open the file or enter the directory.
+    -           Go to the parent directory.
+    :w          Apply changes (create/delete/rename) with confirmation.
+
+==============================================================================
+ACTIONS                                              *vist-file-actions*
+
+When the buffer is saved via `:w`, vist-file parses the changes:
+
+CREATE                                               *vist-file-create*
+    Add a new line in the buffer.
+    - To create a directory: append a slash (e.g., `new_dir/`)
+    - To create a file: write the filename (e.g., `new_file.txt`)
+
+DELETE                                               *vist-file-delete*
+    Delete a line from the buffer.
+
+RENAME                                               *vist-file-rename*
+    Edit the text of an existing line.
+
+==============================================================================
+INTERNAL DETAILS                                     *vist-file-details*
+
+Protocol: `vist-file://`
+    vist-file uses a custom protocol for buffer names to track the 
+    current working directory.
+
+Confirmation:
+    A confirmation dialog will appear listing all pending actions
+    before any file system changes are applied.
+
+==============================================================================
+vim:tw=78:ft=help:norl:
