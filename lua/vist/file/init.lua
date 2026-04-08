@@ -66,11 +66,12 @@ function M.parse(state)
     for _, item in ipairs(state) do
         if item.id then
             current_ids[item.id] = true
+            local current_text = item.text:gsub("/$", "")
             local old_name = M.cache[item.id]
-            if old_name and old_name ~= item.text then
+            if old_name and old_name ~= current_text then
                 table.insert(actions, {
                     kind = "rename",
-                    data = { old = old_name, new = item.text },
+                    data = { old = old_name, new = current_text },
                 })
             end
         else
