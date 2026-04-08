@@ -90,26 +90,56 @@ function M.parse(state)
     return actions
 end
 
+local function smart_delete(path)
+    local uv = vim.uv
+    local stat = uv.fs_stat(path)
+    if not stat then
+        return
+    end
+
+    local ok, err
+    if stat.type == "directory" then
+        ok, err = pcall(function()
+            vim.fn.delete(path, "rf")
+        end)
+    else
+        ok, err = uv.fs_unlink(path)
+    end
+
+    if not ok or (type(ok) == "number" and ok ~= 0) then
+        vim.notify((err or "Unknown Error"), vim.log.levels.ERROR)
+    end
+end
+
+local function smart_rename(old_p, new_p)
+    local uv = vim.uv
+    local ok, err, err_name = uv.fs_rename(old_p, new_p)
+
+    if not ok then
+        vim.notify(err .. " " .. err_name, vim.log.levels.ERROR)
+    end
+    return ok
+end
+
 function M.do_action(action)
     local cwd = get_cwd()
     if action.kind == "rename" then
         local old_path = vim.fs.joinpath(cwd, action.data.old)
         local new_path = vim.fs.joinpath(cwd, action.data.new)
-        os.rename(old_path, new_path)
+        smart_rename(old_path, new_path)
     elseif action.kind == "delete" then
         local path = vim.fs.joinpath(cwd, action.data.name)
-        if vim.fn.isdirectory(path) == 1 then
-            vim.fn.delete(path, "rf")
-        end
-        os.remove(path)
+        smart_delete(path)
     elseif action.kind == "create" then
         local path = vim.fs.joinpath(cwd, action.data.name)
         if action.data.name:sub(-1) == "/" then
             vim.fn.mkdir(path, "p")
         else
-            local f = io.open(path, "w")
+            local f, err = io.open(path, "w")
             if f then
                 f:close()
+            else
+                vim.notify(err or "", vim.log.levels.ERROR)
             end
         end
     end
