@@ -42,13 +42,20 @@ function M.list()
     local items = { directory = {}, file = {}, all = {} }
     M.cache = {}
 
-    for i, name in ipairs(files) do
+    for _, name in ipairs(files) do
         local ext = name:match("%.([^%.]+)$")
-        local icon, hl = devicons.get_icon(name, ext, { default = true })
         local full_path = vim.fs.joinpath(cwd, name)
+        local real_path = vim.uv.fs_realpath(full_path) or full_path
+        local stat = vim.uv.fs_stat(real_path)
+        local id = stat and stat.ino or nil
+        if not id then
+            vim.notify("Failed to stat", vim.log.levels.ERROR)
+            return
+        end
+        local icon, hl = devicons.get_icon(name, ext, { default = true })
         local display_name = name
-        local item = { id = i, display = display_name, icon = icon, icon_hl = hl }
-        if vim.fn.isdirectory(full_path) == 1 then
+        local item = { id = id, display = display_name, icon = icon, icon_hl = hl }
+        if vim.fn.isdirectory(real_path) == 1 then
             item.display = name .. "/"
             item.icon = ""
             item.icon_hl = "Directory"
@@ -56,7 +63,7 @@ function M.list()
         else
             table.insert(items.file, item)
         end
-        M.cache[i] = name
+        M.cache[id] = name
     end
     vim.list_extend(items.all, items.directory)
     vim.list_extend(items.all, items.file)
