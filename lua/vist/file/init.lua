@@ -137,6 +137,11 @@ function M.do_action(action)
         smart_delete(path)
     elseif action.kind == "create" then
         local path = vim.fs.joinpath(cwd, action.data.name)
+        local parent = vim.fn.fnamemodify(path, ":h")
+        if vim.fn.isdirectory(parent) == 0 then
+            vim.fn.mkdir(parent, "p")
+        end
+
         if action.data.name:sub(-1) == "/" then
             vim.fn.mkdir(path, "p")
         else
