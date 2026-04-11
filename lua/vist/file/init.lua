@@ -54,7 +54,7 @@ function M.list()
         end
         local icon, hl = devicons.get_icon(name, ext, { default = true })
         local display_name = name
-        local item = { id = id, display = display_name, icon = icon, icon_hl = hl }
+        local item = { id = tostring(id), display = display_name, icon = icon, icon_hl = hl }
         if vim.fn.isdirectory(real_path) == 1 then
             item.display = name .. "/"
             item.icon = ""
@@ -77,9 +77,14 @@ function M.parse(state)
 
     for _, item in ipairs(state) do
         if item.id then
-            current_ids[item.id] = true
+            local id = tonumber(item.id)
+            if not id then
+                vim.notify("Invaild ID: " .. item.id, vim.log.levels.ERROR)
+                return
+            end
+            current_ids[id] = true
             local current_text = item.text:gsub("/$", "")
-            local old_name = M.cache[item.id]
+            local old_name = M.cache[id]
             if old_name and old_name ~= current_text then
                 table.insert(actions, {
                     kind = "rename",
