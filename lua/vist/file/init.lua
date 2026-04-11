@@ -137,7 +137,13 @@ function M.do_action(action)
     local cwd = get_cwd()
     if action.kind == "rename" then
         local old_path = vim.fs.joinpath(cwd, action.data.old)
-        local new_path = vim.fs.joinpath(cwd, action.data.new)
+        local new_path = vim.fn.fnamemodify(vim.fs.joinpath(cwd, action.data.new), ":p")
+        new_path = new_path:gsub("/$", "")
+
+        local new_parent = vim.fn.fnamemodify(new_path, ":h")
+        if vim.fn.isdirectory(new_parent) == 0 then
+            vim.fn.mkdir(new_parent, "p")
+        end
         smart_rename(old_path, new_path)
     elseif action.kind == "delete" then
         local path = vim.fs.joinpath(cwd, action.data.name)
