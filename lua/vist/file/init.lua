@@ -199,6 +199,7 @@ function M.on_open(bufnr)
         require("vist.core").open(M)
         M.pending_path = nil
     end, { buffer = bufnr, silent = true, noremap = true })
+    vim.bo[bufnr].filetype = "vist-file"
 end
 
 function M.confirm(actions)
