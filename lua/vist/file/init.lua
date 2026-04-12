@@ -32,6 +32,10 @@ function M.bufname()
     return M.protocol .. get_cwd()
 end
 
+function M.filetype()
+    return "vist-file"
+end
+
 function M.list()
     local cwd = get_cwd()
     if not cwd then
@@ -199,7 +203,6 @@ function M.on_open(bufnr)
         require("vist.core").open(M)
         M.pending_path = nil
     end, { buffer = bufnr, silent = true, noremap = true })
-    vim.bo[bufnr].filetype = "vist-file"
 end
 
 function M.confirm(actions)
