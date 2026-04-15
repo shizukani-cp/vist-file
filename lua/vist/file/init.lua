@@ -78,6 +78,7 @@ function M.parse(state)
     ---@type Vist.Action<Vist.Adapters.File.Action.Kind>
     local actions = {}
     local current_ids = {}
+    local seen_ids = {}
 
     for _, item in ipairs(state) do
         if item.id then
@@ -89,10 +90,19 @@ function M.parse(state)
             current_ids[id] = true
             local current_text = item.text:gsub("/$", "")
             local old_name = M.cache[id]
-            if old_name and old_name ~= current_text then
+            if not seen_ids[id] then
+                if old_name and old_name ~= current_text then
+                    table.insert(actions, {
+                        kind = "rename",
+                        data = { old = old_name, new = current_text },
+                    })
+                end
+                seen_ids[id] = true
+                current_ids[id] = true
+            else
                 table.insert(actions, {
-                    kind = "rename",
-                    data = { old = old_name, new = current_text },
+                    kind = "copy",
+                    data = { src = old_name, dest = current_text },
                 })
             end
         else
@@ -142,6 +152,16 @@ local function smart_rename(old_p, new_p)
     return ok
 end
 
+local function smart_copy(src_p, dest_p)
+    local uv = vim.uv
+    local ok, err, err_name = uv.fs_copyfile(src_p, dest_p)
+
+    if not ok then
+        vim.notify(err .. " " .. err_name, vim.log.levels.ERROR)
+    end
+    return ok
+end
+
 function M.do_action(action)
     local cwd = get_cwd()
     if action.kind == "rename" then
@@ -174,6 +194,16 @@ function M.do_action(action)
                 vim.notify(err or "", vim.log.levels.ERROR)
             end
         end
+    elseif action.kind == "copy" then
+        local src_path = vim.fs.joinpath(cwd, action.data.src)
+        local dest_path = vim.fn.fnamemodify(vim.fs.joinpath(cwd, action.data.dest), ":p")
+        dest_path = dest_path:gsub("/$", "")
+
+        local new_parent = vim.fn.fnamemodify(dest_path, ":h")
+        if vim.fn.isdirectory(new_parent) == 0 then
+            vim.fn.mkdir(new_parent, "p")
+        end
+        smart_copy(src_path, dest_path)
     end
 end
 
@@ -218,6 +248,8 @@ function M.confirm(actions)
             table.insert(lines, "  [-] " .. a.data.name)
         elseif a.kind == "rename" then
             table.insert(lines, "  [R] " .. a.data.old .. " -> " .. a.data.new)
+        elseif a.kind == "copy" then
+            table.insert(lines, "  [C] " .. a.data.src .. " -> " .. a.data.dest)
         end
     end
 
