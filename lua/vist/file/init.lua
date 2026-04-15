@@ -118,6 +118,11 @@ function M.parse(state)
         end
     end
 
+    table.sort(actions, function(a, b)
+        local priority = { copy = 1, create = 2, rename = 3, delete = 4 }
+        return priority[a.kind] < priority[b.kind]
+    end)
+
     return actions
 end
 
