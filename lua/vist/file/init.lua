@@ -51,6 +51,7 @@ function M.list()
         local full_path = vim.fs.joinpath(cwd, name)
         local real_path = vim.uv.fs_realpath(full_path) or full_path
         local stat = vim.uv.fs_stat(real_path)
+        local lstat = vim.uv.fs_lstat(full_path)
         ---@type any
         local id = stat and stat.ino or nil
         if not id then
@@ -60,6 +61,10 @@ function M.list()
         local icon, hl = devicons.get_icon(name, ext, { default = true })
         local display_name = name
         local item = { id = tostring(id), display = display_name, icon = icon, icon_hl = hl }
+        if lstat.type == "link" then
+            local target = vim.uv.fs_readlink(full_path)
+            item.virt_text = { { " -> " .. target, stat and "Comment" or "DiagnosticError" } }
+        end
         if vim.fn.isdirectory(real_path) == 1 then
             item.display = name .. "/"
             item.icon = ""
