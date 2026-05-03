@@ -51,10 +51,11 @@ function M.list()
         local full_path = vim.fs.joinpath(cwd, name)
         local real_path = vim.uv.fs_realpath(full_path) or full_path
         local stat = vim.uv.fs_stat(real_path)
+        ---@type any
         local id = stat and stat.ino or nil
         if not id then
             vim.notify("Failed to stat", vim.log.levels.ERROR)
-            return
+            id = full_path
         end
         local icon, hl = devicons.get_icon(name, ext, { default = true })
         local display_name = name
