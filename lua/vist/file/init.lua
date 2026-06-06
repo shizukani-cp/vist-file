@@ -44,7 +44,7 @@ function M.list()
     local files = vim.fn.readdir(cwd)
     table.sort(files)
     local items = { directory = {}, file = {}, all = {} }
-    M.cache = {}
+    M.current_dir_ids = {}
 
     for _, name in ipairs(files) do
         local ext = name:match("%.([^%.]+)$")
@@ -73,7 +73,8 @@ function M.list()
         else
             table.insert(items.file, item)
         end
-        M.cache[id] = name
+        M.cache[id] = real_path
+        M.current_dir_ids[id] = true
     end
     vim.list_extend(items.all, items.directory)
     vim.list_extend(items.all, items.file)
@@ -85,6 +86,7 @@ function M.parse(state)
     local actions = {}
     local current_ids = {}
     local seen_ids = {}
+    local cwd = get_cwd()
 
     for _, item in ipairs(state) do
         if item.id then
@@ -96,11 +98,12 @@ function M.parse(state)
             current_ids[id] = true
             local current_text = item.text:gsub("/$", "")
             local old_name = M.cache[id]
+            local new_full_path = vim.fs.joinpath(cwd, current_text)
             if not seen_ids[id] then
-                if old_name and old_name ~= current_text then
+                if old_name and old_name ~= new_full_path then
                     table.insert(actions, {
                         kind = "rename",
-                        data = { old = old_name, new = current_text },
+                        data = { old = old_name, new = new_full_path },
                     })
                 end
                 seen_ids[id] = true
@@ -108,7 +111,7 @@ function M.parse(state)
             else
                 table.insert(actions, {
                     kind = "copy",
-                    data = { src = old_name, dest = current_text },
+                    data = { src = old_name, dest = new_full_path },
                 })
             end
         else
@@ -118,9 +121,15 @@ function M.parse(state)
         end
     end
 
-    for id, name in pairs(M.cache) do
-        if not current_ids[id] then
-            table.insert(actions, { kind = "delete", data = { name = name } })
+    if M.current_dir_ids then
+        for id, _ in pairs(M.current_dir_ids) do
+            if not current_ids[id] and not seen_ids[id] then
+                local old_path = M.cache[id]
+                if old_path then
+                    table.insert(actions, { kind = "delete", data = { name = old_path } })
+                    M.cache[id] = nil
+                end
+            end
         end
     end
 
@@ -174,10 +183,9 @@ local function smart_copy(src_p, dest_p)
 end
 
 function M.do_action(action)
-    local cwd = get_cwd()
     if action.kind == "rename" then
-        local old_path = vim.fs.joinpath(cwd, action.data.old)
-        local new_path = vim.fn.fnamemodify(vim.fs.joinpath(cwd, action.data.new), ":p")
+        local old_path = action.data.old
+        local new_path = vim.fn.fnamemodify(action.data.new, ":p")
         new_path = new_path:gsub("/$", "")
 
         local new_parent = vim.fn.fnamemodify(new_path, ":h")
@@ -185,11 +193,14 @@ function M.do_action(action)
             vim.fn.mkdir(new_parent, "p")
         end
         smart_rename(old_path, new_path)
+        local stat = vim.uv.fs_stat(new_path)
+        if stat and stat.ino then
+            M.cache[stat.ino] = new_path
+        end
     elseif action.kind == "delete" then
-        local path = vim.fs.joinpath(cwd, action.data.name)
-        smart_delete(path)
+        smart_delete(action.data.name)
     elseif action.kind == "create" then
-        local path = vim.fs.joinpath(cwd, action.data.name)
+        local path = action.data.name
         local parent = vim.fn.fnamemodify(path, ":h")
         if vim.fn.isdirectory(parent) == 0 then
             vim.fn.mkdir(parent, "p")
@@ -206,8 +217,8 @@ function M.do_action(action)
             end
         end
     elseif action.kind == "copy" then
-        local src_path = vim.fs.joinpath(cwd, action.data.src)
-        local dest_path = vim.fn.fnamemodify(vim.fs.joinpath(cwd, action.data.dest), ":p")
+        local src_path = action.data.src
+        local dest_path = vim.fn.fnamemodify(action.data.dest, ":p")
         dest_path = dest_path:gsub("/$", "")
 
         local new_parent = vim.fn.fnamemodify(dest_path, ":h")
