@@ -197,6 +197,38 @@ function M.do_action(action)
         if stat and stat.ino then
             M.cache[stat.ino] = new_path
         end
+        local old_dir = vim.fn.fnamemodify(old_path, ":p:h"):gsub("/$", "")
+        local new_dir = vim.fn.fnamemodify(new_path, ":p:h"):gsub("/$", "")
+
+        local target_bufs = {}
+        for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+            if vim.api.nvim_buf_is_loaded(bufnr) then
+                local bname = vim.api.nvim_buf_get_name(bufnr)
+                if bname:find(M.protocol, 1, true) == 1 then
+                    local buf_dir = bname:sub(#M.protocol + 1):gsub("/$", "")
+                    if buf_dir == old_dir or buf_dir == new_dir then
+                        table.insert(target_bufs, { bufnr = bufnr, dir = buf_dir })
+                    end
+                end
+            end
+        end
+
+        vim.schedule(function()
+            local current_buf = vim.api.nvim_get_current_buf()
+
+            for _, item in ipairs(target_bufs) do
+                if vim.api.nvim_buf_is_valid(item.bufnr) then
+                    if item.bufnr == current_buf then
+                        require("vist.core").open(M)
+                    else
+                        vim.api.nvim_buf_set_option(item.bufnr, "modified", false)
+                        if item.dir == old_dir then
+                            vim.cmd("silent! bwipeout " .. item.bufnr)
+                        end
+                    end
+                end
+            end
+        end)
     elseif action.kind == "delete" then
         smart_delete(action.data.name)
     elseif action.kind == "create" then
