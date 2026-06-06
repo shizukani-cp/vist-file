@@ -101,18 +101,40 @@ function M.parse(state)
             local new_full_path = vim.fs.joinpath(cwd, current_text)
             if not seen_ids[id] then
                 if old_name and old_name ~= new_full_path then
-                    table.insert(actions, {
-                        kind = "rename",
-                        data = { old = old_name, new = new_full_path },
-                    })
+                    local old_dir = vim.fn.fnamemodify(old_name, ":p:h")
+                    local old_bufname = M.protocol .. old_dir
+                    local old_bufnr = vim.fn.bufnr(old_bufname)
+
+                    local is_moved = true
+
+                    if old_bufnr ~= -1 and vim.api.nvim_buf_is_loaded(old_bufnr) then
+                        local lines = vim.api.nvim_buf_get_lines(old_bufnr, 0, -1, false)
+                        local target_name = vim.fn.fnamemodify(old_name, ":t")
+
+                        for _, line in ipairs(lines) do
+                            local found_id = line:match("^{?(%d+)}?")
+                            if found_id and tonumber(found_id) == id then
+                                is_moved = false
+                                break
+                            end
+                        end
+                    else
+                    end
+
+                    if is_moved then
+                        table.insert(actions, {
+                            kind = "rename",
+                            data = { old = old_name, new = new_full_path },
+                        })
+                    else
+                        table.insert(actions, {
+                            kind = "copy",
+                            data = { src = old_name, dest = new_full_path },
+                        })
+                    end
                 end
                 seen_ids[id] = true
                 current_ids[id] = true
-            else
-                table.insert(actions, {
-                    kind = "copy",
-                    data = { src = old_name, dest = new_full_path },
-                })
             end
         else
             if item.text ~= "" then
