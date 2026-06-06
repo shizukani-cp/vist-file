@@ -1,4 +1,4 @@
-# vist-file.nvim
+# vist-file
 
 A file system adapter for `vist.nvim` that brings oil.nvim-like editing capabilities to Neovim.
 
@@ -23,7 +23,7 @@ Using lazy.nvim:
 
 ```lua
 {
-    "shizukani-cp/vist-file.nvim",
+    "shizukani-cp/vist-file",
     dependencies = {
         "shizukani-cp/vist.nvim",
         "nvim-tree/nvim-web-devicons"
