@@ -138,7 +138,8 @@ function M.parse(state)
             end
         else
             if item.text ~= "" then
-                table.insert(actions, { kind = "create", data = { name = item.text } })
+                local full_path = vim.fs.joinpath(cwd, item.text)
+                table.insert(actions, { kind = "create", data = { name = full_path } })
             end
         end
     end
