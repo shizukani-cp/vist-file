@@ -103,34 +103,20 @@ function M.parse(state)
                 if old_name and old_name ~= new_full_path then
                     local old_dir = vim.fn.fnamemodify(old_name, ":p:h")
                     local old_bufname = M.protocol .. old_dir
-                    local old_bufnr = vim.fn.bufnr(old_bufname)
-
-                    local is_moved = true
-
-                    if old_bufnr ~= -1 and vim.api.nvim_buf_is_loaded(old_bufnr) then
-                        local lines = vim.api.nvim_buf_get_lines(old_bufnr, 0, -1, false)
-                        local target_name = vim.fn.fnamemodify(old_name, ":t")
-
-                        for _, line in ipairs(lines) do
-                            local found_id = line:match("^{?(%d+)}?")
-                            if found_id and tonumber(found_id) == id then
-                                is_moved = false
-                                break
+                    local id_counts = {}
+                    for _, item in ipairs(state) do
+                        if item.id then
+                            local id = tonumber(item.id)
+                            if id then
+                                id_counts[id] = (id_counts[id] or 0) + 1
                             end
                         end
-                    else
                     end
 
-                    if is_moved then
-                        table.insert(actions, {
-                            kind = "rename",
-                            data = { old = old_name, new = new_full_path },
-                        })
+                    if id_counts[id] > 1 then
+                        table.insert(actions, { kind = "copy", data = { src = old_name, dest = new_full_path } })
                     else
-                        table.insert(actions, {
-                            kind = "copy",
-                            data = { src = old_name, dest = new_full_path },
-                        })
+                        table.insert(actions, { kind = "rename", data = { old = old_name, new = new_full_path } })
                     end
                 end
                 seen_ids[id] = true
